@@ -19,7 +19,7 @@ for (const token of ['<canvas', 'app.js', 'styles.css']) {
   if (!html.includes(token)) throw new Error(`index.html missing ${token}`);
 }
 
-for (const token of ['right-to-left', 'judge', 'makeChart', 'AudioContext']) {
+for (const token of ['right-to-left', 'judge', 'makeChart', 'AudioContext', 'difficulties', 'Expert']) {
   if (!app.includes(token)) throw new Error(`app.js missing ${token}`);
 }
 

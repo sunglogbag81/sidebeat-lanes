@@ -15,6 +15,7 @@
       </section>
 
       <section class="hud" aria-label="게임 상태">
+        <div><span>Difficulty</span><strong id="difficultyLabel">Normal</strong></div>
         <div><span>Score</span><strong id="score">0</strong></div>
         <div><span>Combo</span><strong id="combo">0</strong></div>
         <div><span>Accuracy</span><strong id="accuracy">100.00%</strong></div>
@@ -24,6 +25,15 @@
       <section class="game-card">
         <canvas id="game" width="1100" height="520" aria-label="Sidebeat Lanes game canvas"></canvas>
         <div class="controls">
+          <label class="difficulty-picker">
+            <span>난이도</span>
+            <select id="difficultySelect" aria-label="난이도 선택">
+              <option value="easy">Easy</option>
+              <option value="normal" selected>Normal</option>
+              <option value="hard">Hard</option>
+              <option value="expert">Expert</option>
+            </select>
+          </label>
           <button id="startButton">Start / Pause</button>
           <button id="restartButton">Restart</button>
           <p><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> 로 판정선에 도착한 노트를 치세요. <kbd>Space</kbd> 시작/일시정지, <kbd>R</kbd> 재시작.</p>

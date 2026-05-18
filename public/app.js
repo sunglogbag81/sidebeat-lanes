@@ -7,6 +7,8 @@ const ui = {
   combo: document.querySelector('#combo'),
   accuracy: document.querySelector('#accuracy'),
   life: document.querySelector('#life'),
+  difficultyLabel: document.querySelector('#difficultyLabel'),
+  difficultySelect: document.querySelector('#difficultySelect'),
   judgement: document.querySelector('#judgement'),
   status: document.querySelector('#status'),
   startButton: document.querySelector('#startButton'),
@@ -17,7 +19,7 @@ const LANES = ['D', 'F', 'J', 'K'];
 const LANE_KEYS = new Map(LANES.map((key, lane) => [key.toLowerCase(), lane]));
 const judgementLineX = 150;
 const spawnX = 1040;
-const travelMs = 2200;
+const baseTravelMs = 2200;
 const laneTop = 92;
 const laneGap = 82;
 const noteRadius = 22;
@@ -34,16 +36,58 @@ let masterGain;
 let state;
 let animationId;
 let lastFrame = 0;
+let currentDifficulty = 'normal';
 
-function makeChart() {
+const difficulties = {
+  easy: {
+    label: 'Easy',
+    bpm: 104,
+    bars: 6,
+    speed: 0.86,
+    missDamage: 6,
+    emptyDamage: 2,
+    patterns: [0, 1, 2, 3, 0, 1, 2, 3],
+  },
+  normal: {
+    label: 'Normal',
+    bpm: 128,
+    bars: 8,
+    speed: 1,
+    missDamage: 8,
+    emptyDamage: 3,
+    patterns: [0, 1, 2, 3, 1, 0, 3, 2, [0, 2], 1, 3, [1, 3], 2, 0, 1, 3],
+  },
+  hard: {
+    label: 'Hard',
+    bpm: 150,
+    bars: 10,
+    speed: 1.18,
+    missDamage: 10,
+    emptyDamage: 4,
+    patterns: [0, 2, 1, 3, [0, 1], 2, 3, 1, [2, 3], 0, 1, [0, 3], 2, 1, 3, [1, 2]],
+  },
+  expert: {
+    label: 'Expert',
+    bpm: 172,
+    bars: 12,
+    speed: 1.34,
+    missDamage: 12,
+    emptyDamage: 5,
+    patterns: [0, [1, 3], 2, 1, [0, 2], 3, 0, [1, 2], 3, 2, [0, 3], 1, 0, 2, [1, 3], [0, 2]],
+  },
+};
+
+function activeDifficulty() {
+  return difficulties[currentDifficulty] ?? difficulties.normal;
+}
+
+function makeChart(difficulty = activeDifficulty()) {
   const notes = [];
-  const bpm = 128;
-  const beat = 60000 / bpm;
-  const patterns = [0, 1, 2, 3, 1, 0, 3, 2, [0, 2], 1, 3, [1, 3], 2, 0, 1, 3];
+  const beat = 60000 / difficulty.bpm;
 
-  for (let bar = 0; bar < 8; bar += 1) {
-    patterns.forEach((pattern, index) => {
-      const time = chartOffsetMs + (bar * patterns.length + index) * (beat / 2);
+  for (let bar = 0; bar < difficulty.bars; bar += 1) {
+    difficulty.patterns.forEach((pattern, index) => {
+      const time = chartOffsetMs + (bar * difficulty.patterns.length + index) * (beat / 2);
       const lanes = Array.isArray(pattern) ? pattern : [pattern];
       lanes.forEach((lane) => notes.push({ lane, time, hit: false, missed: false }));
     });
@@ -53,8 +97,10 @@ function makeChart() {
 
 function reset() {
   cancelAnimationFrame(animationId);
+  const difficulty = activeDifficulty();
   state = {
-    notes: makeChart(),
+    difficulty,
+    notes: makeChart(difficulty),
     running: false,
     startedAt: 0,
     pausedAt: 0,
@@ -70,7 +116,7 @@ function reset() {
     nextTick: 0,
   };
   ui.judgement.textContent = 'Ready';
-  ui.status.textContent = '스페이스 또는 Start를 눌러 시작하세요.';
+  ui.status.textContent = `난이도 ${difficulty.label}. 스페이스 또는 Start를 눌러 시작하세요.`;
   updateHud();
   draw(0);
 }
@@ -163,7 +209,7 @@ function judge(lane) {
 
 function registerMiss(reason = 'Miss') {
   state.combo = 0;
-  state.life = Math.max(0, state.life - (reason === 'Empty' ? 3 : 8));
+  state.life = Math.max(0, state.life - (reason === 'Empty' ? state.difficulty.emptyDamage : state.difficulty.missDamage));
   if (reason !== 'Empty') state.judged += 1;
   showJudgement('Miss', reason === 'Empty' ? '노트 없음' : '지나감', '#ff5c9a');
   updateHud();
@@ -177,6 +223,7 @@ function showJudgement(label, detail, color) {
 }
 
 function updateHud() {
+  ui.difficultyLabel.textContent = state.difficulty.label;
   ui.score.textContent = Math.round(state.score).toLocaleString('ko-KR');
   ui.combo.textContent = state.combo;
   const accuracy = state.judged ? (state.totalHitValue / state.judged) * 100 : 100;
@@ -209,7 +256,7 @@ function loop(now) {
 }
 
 function playMetronome(time) {
-  const beatMs = 60000 / 128;
+  const beatMs = 60000 / state.difficulty.bpm;
   if (time >= state.nextTick) {
     const beatIndex = Math.round(state.nextTick / beatMs);
     beep(beatIndex % 4 === 0 ? 220 : 165, 0.035, 'square');
@@ -280,12 +327,13 @@ function drawLanes(time) {
   ctx.fillStyle = 'rgba(238,243,255,0.64)';
   ctx.font = '700 14px system-ui';
   ctx.textAlign = 'left';
-  ctx.fillText(`TIME ${(time / 1000).toFixed(2)}s`, 76, 470);
+  ctx.fillText(`${state.difficulty.label.toUpperCase()} · ${state.difficulty.bpm} BPM · TIME ${(time / 1000).toFixed(2)}s`, 76, 470);
 }
 
 function drawNotes(time) {
   state.notes.forEach((note) => {
     if (note.hit || note.missed) return;
+    const travelMs = baseTravelMs / state.difficulty.speed;
     const x = judgementLineX + (note.time - time) / travelMs * (spawnX - judgementLineX);
     if (x < judgementLineX - 90 || x > spawnX + 60) return;
     const y = laneY(note.lane);
@@ -348,6 +396,10 @@ window.addEventListener('keydown', (event) => {
   if (lane !== undefined) judge(lane);
 });
 
+ui.difficultySelect.addEventListener('change', (event) => {
+  currentDifficulty = event.target.value;
+  reset();
+});
 ui.startButton.addEventListener('click', toggleStart);
 ui.restartButton.addEventListener('click', reset);
 

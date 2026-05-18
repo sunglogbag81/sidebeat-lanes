@@ -36,7 +36,7 @@ h1 { margin: 0; font-size: clamp(2.4rem, 7vw, 5.4rem); line-height: 0.9; }
 
 .hud {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 12px;
   margin-bottom: 14px;
 }
@@ -68,13 +68,28 @@ canvas {
   border-top: 1px solid var(--line);
   color: var(--muted);
 }
-button {
+.difficulty-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-weight: 800;
+}
+select, button {
   border: 0;
   border-radius: 999px;
   padding: 11px 17px;
+  font: inherit;
+  font-weight: 800;
+}
+select {
+  background: #11182a;
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+button {
   background: var(--accent);
   color: #06110e;
-  font-weight: 800;
   cursor: pointer;
 }
 button + button { background: #242b45; color: var(--text); }
