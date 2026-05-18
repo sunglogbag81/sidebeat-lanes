@@ -13,6 +13,17 @@ const ui = {
   status: document.querySelector('#status'),
   startButton: document.querySelector('#startButton'),
   restartButton: document.querySelector('#restartButton'),
+  audioUpload: document.querySelector('#audioUpload'),
+  audioPlayer: document.querySelector('#audioPlayer'),
+  songTitle: document.querySelector('#songTitle'),
+  editorTime: document.querySelector('#editorTime'),
+  editorCount: document.querySelector('#editorCount'),
+  chartList: document.querySelector('#chartList'),
+  exportChart: document.querySelector('#exportChart'),
+  importChart: document.querySelector('#importChart'),
+  clearChart: document.querySelector('#clearChart'),
+  downloadChart: document.querySelector('#downloadChart'),
+  editorLaneButtons: [...document.querySelectorAll('[data-editor-lane]')],
 };
 
 const LANES = ['D', 'F', 'J', 'K'];
@@ -35,8 +46,11 @@ let audioContext;
 let masterGain;
 let state;
 let animationId;
+let editorAnimationId;
 let lastFrame = 0;
 let currentDifficulty = 'normal';
+let customChart = [];
+let uploadedSong = null;
 
 const difficulties = {
   easy: {
@@ -82,9 +96,10 @@ function activeDifficulty() {
 }
 
 function makeChart(difficulty = activeDifficulty()) {
+  if (customChart.length > 0) return clonePlayableNotes(customChart);
+
   const notes = [];
   const beat = 60000 / difficulty.bpm;
-
   for (let bar = 0; bar < difficulty.bars; bar += 1) {
     difficulty.patterns.forEach((pattern, index) => {
       const time = chartOffsetMs + (bar * difficulty.patterns.length + index) * (beat / 2);
@@ -95,8 +110,16 @@ function makeChart(difficulty = activeDifficulty()) {
   return notes;
 }
 
+function clonePlayableNotes(notes) {
+  return notes
+    .map((note) => ({ lane: Number(note.lane), time: Number(note.time), hit: false, missed: false }))
+    .filter((note) => Number.isFinite(note.time) && note.time >= 0 && note.lane >= 0 && note.lane < LANES.length)
+    .sort((a, b) => a.time - b.time || a.lane - b.lane);
+}
+
 function reset() {
   cancelAnimationFrame(animationId);
+  stopSong();
   const difficulty = activeDifficulty();
   state = {
     difficulty,
@@ -114,9 +137,12 @@ function reset() {
     life: 100,
     laneFlash: Array(4).fill(0),
     nextTick: 0,
+    usesCustomChart: customChart.length > 0,
   };
   ui.judgement.textContent = 'Ready';
-  ui.status.textContent = `난이도 ${difficulty.label}. 스페이스 또는 Start를 눌러 시작하세요.`;
+  ui.status.textContent = state.usesCustomChart
+    ? `커스텀 채보 ${customChart.length}개 노트. Space 또는 Start로 시작하세요.`
+    : `난이도 ${difficulty.label}. Space 또는 Start로 시작하세요.`;
   updateHud();
   draw(0);
 }
@@ -144,20 +170,23 @@ function beep(frequency = 440, duration = 0.055, type = 'sine') {
 }
 
 function songTime(now = performance.now()) {
+  if (uploadedSong && state.running) return ui.audioPlayer.currentTime * 1000;
+  if (uploadedSong && state.startedAt) return ui.audioPlayer.currentTime * 1000;
   if (!state.startedAt) return 0;
   const end = state.running ? now : state.pausedAt;
   return end - state.startedAt - state.pauseAccumulated;
 }
 
-function toggleStart() {
+async function toggleStart() {
   ensureAudio();
-  if (audioContext.state === 'suspended') audioContext.resume();
+  if (audioContext.state === 'suspended') await audioContext.resume();
 
   const now = performance.now();
   if (!state.startedAt) {
     state.startedAt = now;
     state.running = true;
-    ui.status.textContent = '진행 중 — 왼쪽 판정선에 맞춰 입력하세요.';
+    if (uploadedSong) await playSongFromStart();
+    ui.status.textContent = uploadedSong ? '업로드한 곡 재생 중 — 커스텀 채보를 입력하세요.' : '진행 중 — 왼쪽 판정선에 맞춰 입력하세요.';
     lastFrame = now;
     animationId = requestAnimationFrame(loop);
     return;
@@ -166,15 +195,28 @@ function toggleStart() {
   state.running = !state.running;
   if (state.running) {
     state.pauseAccumulated += now - state.pausedAt;
+    if (uploadedSong) await ui.audioPlayer.play();
     ui.status.textContent = '진행 중 — 왼쪽 판정선에 맞춰 입력하세요.';
     lastFrame = now;
     animationId = requestAnimationFrame(loop);
   } else {
     state.pausedAt = now;
+    if (uploadedSong) ui.audioPlayer.pause();
     ui.status.textContent = '일시정지됨.';
     cancelAnimationFrame(animationId);
     draw(songTime(now));
   }
+}
+
+async function playSongFromStart() {
+  ui.audioPlayer.currentTime = 0;
+  await ui.audioPlayer.play();
+}
+
+function stopSong() {
+  if (!uploadedSong) return;
+  ui.audioPlayer.pause();
+  ui.audioPlayer.currentTime = 0;
 }
 
 function judge(lane) {
@@ -223,7 +265,7 @@ function showJudgement(label, detail, color) {
 }
 
 function updateHud() {
-  ui.difficultyLabel.textContent = state.difficulty.label;
+  ui.difficultyLabel.textContent = state.usesCustomChart ? 'Custom' : state.difficulty.label;
   ui.score.textContent = Math.round(state.score).toLocaleString('ko-KR');
   ui.combo.textContent = state.combo;
   const accuracy = state.judged ? (state.totalHitValue / state.judged) * 100 : 100;
@@ -244,11 +286,12 @@ function loop(now) {
     }
   });
 
-  playMetronome(time);
+  if (!uploadedSong) playMetronome(time);
   draw(time);
 
-  const lastNoteTime = state.notes.at(-1).time;
-  if (time > lastNoteTime + 1800) {
+  const lastNoteTime = state.notes.at(-1)?.time ?? 0;
+  const songEnded = uploadedSong && ui.audioPlayer.ended;
+  if (songEnded || time > lastNoteTime + 1800) {
     finish(`완주! Max Combo ${state.maxCombo}`);
     return;
   }
@@ -267,6 +310,7 @@ function playMetronome(time) {
 function finish(message) {
   state.running = false;
   state.pausedAt = performance.now();
+  if (uploadedSong) ui.audioPlayer.pause();
   cancelAnimationFrame(animationId);
   ui.status.textContent = message;
 }
@@ -327,7 +371,8 @@ function drawLanes(time) {
   ctx.fillStyle = 'rgba(238,243,255,0.64)';
   ctx.font = '700 14px system-ui';
   ctx.textAlign = 'left';
-  ctx.fillText(`${state.difficulty.label.toUpperCase()} · ${state.difficulty.bpm} BPM · TIME ${(time / 1000).toFixed(2)}s`, 76, 470);
+  const mode = state.usesCustomChart ? `CUSTOM · ${customChart.length} NOTES` : `${state.difficulty.label.toUpperCase()} · ${state.difficulty.bpm} BPM`;
+  ctx.fillText(`${mode} · TIME ${(time / 1000).toFixed(2)}s`, 76, 470);
 }
 
 function drawNotes(time) {
@@ -354,7 +399,7 @@ function drawNotes(time) {
   });
 }
 
-function drawOverlay(time) {
+function drawOverlay() {
   if (state.running) return;
   ctx.fillStyle = 'rgba(0,0,0,0.36)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -381,14 +426,103 @@ function roundRect(x, y, width, height, radius) {
   ctx.closePath();
 }
 
+function addEditorNote(lane, time = currentEditorTime()) {
+  const wasPlaying = !ui.audioPlayer.paused;
+  customChart.push({ lane, time: Math.max(0, Math.round(time)) });
+  customChart = clonePlayableNotes(customChart);
+  syncCustomChartIntoGame();
+  refreshChartEditor();
+  ui.audioPlayer.currentTime = time / 1000;
+  if (wasPlaying) ui.audioPlayer.play();
+  ui.status.textContent = `${LANES[lane]} 레인에 ${(time / 1000).toFixed(3)}s 노트를 추가했습니다.`;
+}
+
+function removeEditorNote(index) {
+  customChart.splice(index, 1);
+  syncCustomChartIntoGame();
+  refreshChartEditor();
+}
+
+function syncCustomChartIntoGame() {
+  if (!state) return;
+  state.usesCustomChart = customChart.length > 0;
+  state.notes = state.usesCustomChart ? clonePlayableNotes(customChart) : makeChart(state.difficulty);
+  updateHud();
+  draw(songTime());
+}
+
+function currentEditorTime() {
+  return ui.audioPlayer.currentTime * 1000;
+}
+
+function refreshChartEditor() {
+  ui.editorCount.textContent = `${customChart.length} notes`;
+  ui.editorTime.textContent = `${(currentEditorTime() / 1000).toFixed(3)}s`;
+  ui.chartList.innerHTML = '';
+
+  customChart.slice(0, 80).forEach((note, index) => {
+    const row = document.createElement('li');
+    row.innerHTML = `<button type="button" data-remove-note="${index}">×</button><span>${(note.time / 1000).toFixed(3)}s</span><strong>${LANES[note.lane]}</strong>`;
+    ui.chartList.append(row);
+  });
+
+  if (customChart.length > 80) {
+    const row = document.createElement('li');
+    row.textContent = `… ${customChart.length - 80}개 더 있음`;
+    ui.chartList.append(row);
+  }
+
+  ui.exportChart.value = JSON.stringify(buildChartPayload(), null, 2);
+}
+
+function buildChartPayload() {
+  return {
+    title: ui.songTitle.value || uploadedSong?.name || 'Untitled Song',
+    format: 'sidebeat-lanes-chart-v1',
+    difficulty: currentDifficulty,
+    audioFileName: uploadedSong?.name ?? null,
+    notes: customChart.map(({ lane, time }) => ({ lane, time })),
+  };
+}
+
+function importChartFromText() {
+  const payload = JSON.parse(ui.importChart.value);
+  const notes = Array.isArray(payload) ? payload : payload.notes;
+  if (!Array.isArray(notes)) throw new Error('notes 배열을 찾을 수 없습니다.');
+  if (payload.difficulty && difficulties[payload.difficulty]) {
+    currentDifficulty = payload.difficulty;
+    ui.difficultySelect.value = currentDifficulty;
+  }
+  customChart = clonePlayableNotes(notes);
+  if (payload.title) ui.songTitle.value = payload.title;
+  refreshChartEditor();
+  reset();
+}
+
+function downloadChartJson() {
+  const blob = new Blob([JSON.stringify(buildChartPayload(), null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${slugify(ui.songTitle.value || uploadedSong?.name || 'sidebeat-chart')}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function slugify(value) {
+  return value.toLowerCase().replace(/\.[a-z0-9]+$/i, '').replace(/[^a-z0-9가-힣]+/gi, '-').replace(/^-|-$/g, '') || 'sidebeat-chart';
+}
+
 window.addEventListener('keydown', (event) => {
   if (event.repeat) return;
-  if (event.code === 'Space') {
+  const target = event.target;
+  const isTyping = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
+  if (!isTyping && event.code === 'Space') {
     event.preventDefault();
     toggleStart();
     return;
   }
-  if (event.key.toLowerCase() === 'r') {
+  if (!isTyping && event.key.toLowerCase() === 'r') {
     reset();
     return;
   }
@@ -402,5 +536,49 @@ ui.difficultySelect.addEventListener('change', (event) => {
 });
 ui.startButton.addEventListener('click', toggleStart);
 ui.restartButton.addEventListener('click', reset);
+ui.audioUpload.addEventListener('change', (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  if (uploadedSong?.url) URL.revokeObjectURL(uploadedSong.url);
+  uploadedSong = { name: file.name, url: URL.createObjectURL(file) };
+  ui.audioPlayer.src = uploadedSong.url;
+  ui.songTitle.value ||= file.name.replace(/\.[^.]+$/, '');
+  reset();
+  refreshChartEditor();
+  ui.status.textContent = `${file.name} 업로드 완료. 오디오를 재생하면서 레인 버튼으로 채보를 찍을 수 있습니다.`;
+});
+ui.audioPlayer.addEventListener('timeupdate', refreshChartEditor);
+ui.audioPlayer.addEventListener('play', () => {
+  cancelAnimationFrame(editorAnimationId);
+  const tick = () => {
+    refreshChartEditor();
+    editorAnimationId = requestAnimationFrame(tick);
+  };
+  tick();
+});
+ui.audioPlayer.addEventListener('pause', () => cancelAnimationFrame(editorAnimationId));
+ui.editorLaneButtons.forEach((button) => {
+  button.addEventListener('click', () => addEditorNote(Number(button.dataset.editorLane)));
+});
+ui.chartList.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-remove-note]');
+  if (!button) return;
+  removeEditorNote(Number(button.dataset.removeNote));
+});
+ui.importChart.addEventListener('change', () => {
+  try {
+    importChartFromText();
+    ui.status.textContent = '채보 JSON을 불러왔습니다.';
+  } catch (error) {
+    ui.status.textContent = `채보 불러오기 실패: ${error.message}`;
+  }
+});
+ui.clearChart.addEventListener('click', () => {
+  customChart = [];
+  refreshChartEditor();
+  reset();
+});
+ui.downloadChart.addEventListener('click', downloadChartJson);
 
 reset();
+refreshChartEditor();

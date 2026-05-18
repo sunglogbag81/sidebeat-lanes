@@ -40,6 +40,56 @@
         </div>
       </section>
 
+      <section class="editor-panel" aria-label="채보 에디터">
+        <div class="editor-header">
+          <div>
+            <p class="eyebrow">CHART EDITOR</p>
+            <h2>곡 업로드 & 채보 입력</h2>
+          </div>
+          <strong id="editorCount">0 notes</strong>
+        </div>
+
+        <div class="editor-grid">
+          <label>
+            <span>곡 파일</span>
+            <input id="audioUpload" type="file" accept="audio/*" />
+          </label>
+          <label>
+            <span>곡 제목</span>
+            <input id="songTitle" type="text" placeholder="Untitled Song" />
+          </label>
+          <audio id="audioPlayer" controls preload="metadata"></audio>
+        </div>
+
+        <div class="tap-panel">
+          <p>현재 시간 <strong id="editorTime">0.000s</strong> 에 노트를 찍습니다.</p>
+          <div class="lane-buttons">
+            <button type="button" data-editor-lane="0">D 레인 추가</button>
+            <button type="button" data-editor-lane="1">F 레인 추가</button>
+            <button type="button" data-editor-lane="2">J 레인 추가</button>
+            <button type="button" data-editor-lane="3">K 레인 추가</button>
+          </div>
+        </div>
+
+        <div class="chart-tools">
+          <div>
+            <div class="tool-row">
+              <button id="downloadChart" type="button">JSON 다운로드</button>
+              <button id="clearChart" type="button">채보 비우기</button>
+            </div>
+            <ol id="chartList" class="chart-list"></ol>
+          </div>
+          <label>
+            <span>내보내기 JSON</span>
+            <textarea id="exportChart" rows="10" readonly></textarea>
+          </label>
+          <label>
+            <span>불러오기 JSON 붙여넣기</span>
+            <textarea id="importChart" rows="10" placeholder='{"notes":[{"lane":0,"time":1200}]}'></textarea>
+          </label>
+        </div>
+      </section>
+
       <section class="feedback">
         <strong id="judgement">Ready</strong>
         <span id="status">스페이스 또는 Start를 눌러 시작하세요.</span>

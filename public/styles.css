@@ -120,3 +120,99 @@ kbd {
   .hud { grid-template-columns: repeat(2, 1fr); }
   .controls { align-items: flex-start; flex-direction: column; }
 }
+
+.editor-panel {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 22px;
+  padding: 18px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px);
+}
+.editor-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.editor-header h2 { margin: 0; font-size: 1.4rem; }
+.editor-header .eyebrow { margin: 0 0 4px; }
+#editorCount { color: var(--accent); }
+.editor-grid, .chart-tools {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 12px;
+}
+.editor-grid label, .chart-tools label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-weight: 800;
+}
+input[type="file"], input[type="text"], textarea, audio {
+  width: 100%;
+}
+input[type="file"], input[type="text"], textarea {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #11182a;
+  color: var(--text);
+  padding: 12px;
+  font: inherit;
+}
+textarea {
+  min-height: 190px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.84rem;
+}
+.tap-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.04);
+}
+.tap-panel p { margin: 0; color: var(--muted); }
+.lane-buttons, .tool-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.lane-buttons button { background: var(--hot); color: white; }
+.chart-list {
+  display: grid;
+  gap: 6px;
+  max-height: 230px;
+  overflow: auto;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.chart-list li {
+  display: grid;
+  grid-template-columns: 32px 1fr 44px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px;
+  color: var(--muted);
+}
+.chart-list li button {
+  padding: 5px 9px;
+  background: #242b45;
+  color: var(--text);
+}
+.chart-list li strong { color: var(--accent); }
+
+@media (max-width: 900px) {
+  .editor-grid, .chart-tools { grid-template-columns: 1fr; }
+  .tap-panel { align-items: flex-start; flex-direction: column; }
+}
