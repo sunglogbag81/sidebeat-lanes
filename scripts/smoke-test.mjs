@@ -1,9 +1,15 @@
 import { readFile } from 'node:fs/promises';
 
 const requiredFiles = [
-  'public/index.html',
-  'public/styles.css',
-  'public/app.js',
+  'index.html',
+  'admin.html',
+  'src/main.ts',
+  'src/admin.ts',
+  'src/core/types.ts',
+  'src/core/chart.ts',
+  'src/game/GameApp.ts',
+  'tools/chartgen/generate_chart.py',
+  'tools/chartgen/requirements.txt',
   'README.md',
 ];
 
@@ -12,15 +18,34 @@ for (const file of requiredFiles) {
   if (!contents.trim()) throw new Error(`${file} is empty`);
 }
 
-const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
-const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+const mainHtml = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+const adminHtml = await readFile(new URL('../admin.html', import.meta.url), 'utf8');
+const types = await readFile(new URL('../src/core/types.ts', import.meta.url), 'utf8');
+const chart = await readFile(new URL('../src/core/chart.ts', import.meta.url), 'utf8');
+const game = await readFile(new URL('../src/game/GameApp.ts', import.meta.url), 'utf8');
+const admin = await readFile(new URL('../src/admin.ts', import.meta.url), 'utf8');
+const py = await readFile(new URL('../tools/chartgen/generate_chart.py', import.meta.url), 'utf8');
 
-for (const token of ['<canvas', 'timeline', 'resultDialog', 'startLatency', 'songLibrary', 'audioUpload', 'exportChart']) {
-  if (!html.includes(token)) throw new Error(`index.html missing ${token}`);
+for (const token of ['chartUpload', 'audioUpload', 'Admin Studio', '/src/main.ts']) {
+  if (!mainHtml.includes(token)) throw new Error(`index.html missing ${token}`);
+}
+for (const token of ['AUTO CHARTGEN', 'generatedChartUpload', 'timeline', '/src/admin.ts']) {
+  if (!adminHtml.includes(token)) throw new Error(`admin.html missing ${token}`);
+}
+for (const token of ['interface ChartFile', 'interface ChartNote', 'sidebeat-lanes-chart-v3']) {
+  if (!types.includes(token)) throw new Error(`types.ts missing ${token}`);
+}
+for (const token of ['parseChart', 'buildChartFile', 'normalizeNotes']) {
+  if (!chart.includes(token)) throw new Error(`chart.ts missing ${token}`);
+}
+for (const token of ['class GameApp', 'judge', 'release', 'parseChart']) {
+  if (!game.includes(token)) throw new Error(`GameApp.ts missing ${token}`);
+}
+for (const token of ['drawTimeline', 'generatedChartUpload', 'saveChart']) {
+  if (!admin.includes(token)) throw new Error(`admin.ts missing ${token}`);
+}
+for (const token of ['librosa', 'beat_track', 'onset_detect', 'sidebeat-lanes-chart-v3']) {
+  if (!py.includes(token)) throw new Error(`generate_chart.py missing ${token}`);
 }
 
-for (const token of ['right-to-left', 'judge', 'releaseLane', 'duration', 'showResult', 'drawTimeline', 'snapTime', 'startLatencyCheck', 'saveSongToLibrary', 'downloadChartJson']) {
-  if (!app.includes(token)) throw new Error(`app.js missing ${token}`);
-}
-
-console.log('Smoke test passed: game, editor, latency, and library hooks are present.');
+console.log('Smoke test passed: TS modules, admin studio, and Python chartgen are present.');
