@@ -9,12 +9,20 @@
   <body>
     <main class="shell">
       <section class="hero">
-        <p class="eyebrow">RIGHT → LEFT RHYTHM GAME</p>
-        <h1>Sidebeat Lanes</h1>
-        <p class="subtitle">노트가 오른쪽에서 왼쪽 판정선으로 달려오는 4레인 리듬게임 프로토타입.</p>
+        <div>
+          <p class="eyebrow">RIGHT → LEFT RHYTHM GAME STUDIO</p>
+          <h1>Sidebeat Lanes</h1>
+          <p class="subtitle">곡 업로드, 채보 제작, 롱노트, 레이턴시 체크까지 갖춘 횡스크롤 리듬게임 베이스.</p>
+        </div>
+        <div class="hero-card">
+          <span>Build</span>
+          <strong>Playable Studio</strong>
+          <small>Prototype → Service foundation</small>
+        </div>
       </section>
 
       <section class="hud" aria-label="게임 상태">
+        <div><span>Song</span><strong id="songLabel">Demo Track</strong></div>
         <div><span>Difficulty</span><strong id="difficultyLabel">Normal</strong></div>
         <div><span>Score</span><strong id="score">0</strong></div>
         <div><span>Combo</span><strong id="combo">0</strong></div>
@@ -23,9 +31,9 @@
       </section>
 
       <section class="game-card">
-        <canvas id="game" width="1100" height="520" aria-label="Sidebeat Lanes game canvas"></canvas>
+        <canvas id="game" width="1100" height="560" aria-label="Sidebeat Lanes game canvas"></canvas>
         <div class="controls">
-          <label class="difficulty-picker">
+          <label class="pill-field">
             <span>난이도</span>
             <select id="difficultySelect" aria-label="난이도 선택">
               <option value="easy">Easy</option>
@@ -35,59 +43,105 @@
             </select>
           </label>
           <button id="startButton">Start / Pause</button>
-          <button id="restartButton">Restart</button>
-          <p><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> 로 판정선에 도착한 노트를 치세요. <kbd>Space</kbd> 시작/일시정지, <kbd>R</kbd> 재시작.</p>
+          <button id="restartButton" class="secondary">Restart</button>
+          <p><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> 입력 · 롱노트는 누르고 유지 · <kbd>Space</kbd> 시작/일시정지 · <kbd>R</kbd> 재시작</p>
         </div>
       </section>
 
-      <section class="editor-panel" aria-label="채보 에디터">
-        <div class="editor-header">
-          <div>
-            <p class="eyebrow">CHART EDITOR</p>
-            <h2>곡 업로드 & 채보 입력</h2>
-          </div>
-          <strong id="editorCount">0 notes</strong>
-        </div>
-
-        <div class="editor-grid">
-          <label>
-            <span>곡 파일</span>
-            <input id="audioUpload" type="file" accept="audio/*" />
-          </label>
-          <label>
-            <span>곡 제목</span>
-            <input id="songTitle" type="text" placeholder="Untitled Song" />
-          </label>
-          <audio id="audioPlayer" controls preload="metadata"></audio>
-        </div>
-
-        <div class="tap-panel">
-          <p>현재 시간 <strong id="editorTime">0.000s</strong> 에 노트를 찍습니다.</p>
-          <div class="lane-buttons">
-            <button type="button" data-editor-lane="0">D 레인 추가</button>
-            <button type="button" data-editor-lane="1">F 레인 추가</button>
-            <button type="button" data-editor-lane="2">J 레인 추가</button>
-            <button type="button" data-editor-lane="3">K 레인 추가</button>
-          </div>
-        </div>
-
-        <div class="chart-tools">
-          <div>
-            <div class="tool-row">
-              <button id="downloadChart" type="button">JSON 다운로드</button>
-              <button id="clearChart" type="button">채보 비우기</button>
+      <section class="studio-grid">
+        <section class="panel editor-panel" aria-label="채보 에디터">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">CHART EDITOR</p>
+              <h2>곡 업로드 & 채보 제작</h2>
             </div>
-            <ol id="chartList" class="chart-list"></ol>
+            <strong id="editorCount">0 notes</strong>
           </div>
-          <label>
-            <span>내보내기 JSON</span>
-            <textarea id="exportChart" rows="10" readonly></textarea>
-          </label>
-          <label>
-            <span>불러오기 JSON 붙여넣기</span>
-            <textarea id="importChart" rows="10" placeholder='{"notes":[{"lane":0,"time":1200}]}'></textarea>
-          </label>
-        </div>
+
+          <div class="editor-grid">
+            <label>
+              <span>곡 파일</span>
+              <input id="audioUpload" type="file" accept="audio/*" />
+            </label>
+            <label>
+              <span>곡 제목</span>
+              <input id="songTitle" type="text" placeholder="Untitled Song" />
+            </label>
+            <audio id="audioPlayer" controls preload="metadata"></audio>
+          </div>
+
+          <div class="beat-grid">
+            <label><span>BPM</span><input id="bpmInput" type="number" min="40" max="260" value="128" /></label>
+            <label><span>오프셋(ms)</span><input id="offsetInput" type="number" value="0" /></label>
+            <label><span>스냅</span><select id="snapSelect"><option value="0">Free</option><option value="4">1/4</option><option value="8" selected>1/8</option><option value="12">1/12</option><option value="16">1/16</option></select></label>
+            <label><span>롱노트 길이(ms)</span><input id="longDurationInput" type="number" min="120" step="50" value="900" /></label>
+          </div>
+
+          <canvas id="timeline" width="1040" height="230" aria-label="채보 타임라인"></canvas>
+
+          <div class="tap-panel">
+            <p>현재 시간 <strong id="editorTime">0.000s</strong> · 클릭/드래그로 이동, 스냅 적용</p>
+            <div class="lane-buttons">
+              <button type="button" data-editor-lane="0">D 탭</button>
+              <button type="button" data-editor-lane="1">F 탭</button>
+              <button type="button" data-editor-lane="2">J 탭</button>
+              <button type="button" data-editor-lane="3">K 탭</button>
+              <button type="button" id="addLongNote">롱노트 추가</button>
+            </div>
+          </div>
+
+          <div class="chart-tools">
+            <div>
+              <div class="tool-row">
+                <button id="downloadChart" type="button">JSON 다운로드</button>
+                <button id="saveSong" type="button">곡/채보 저장</button>
+                <button id="clearChart" type="button" class="secondary">채보 비우기</button>
+              </div>
+              <ol id="chartList" class="chart-list"></ol>
+            </div>
+            <label>
+              <span>내보내기 JSON</span>
+              <textarea id="exportChart" rows="10" readonly></textarea>
+            </label>
+            <label>
+              <span>불러오기 JSON 붙여넣기</span>
+              <textarea id="importChart" rows="10" placeholder='{"notes":[{"lane":0,"time":1200,"duration":0}]}'></textarea>
+            </label>
+          </div>
+        </section>
+
+        <aside class="panel side-panel">
+          <div class="panel-header compact">
+            <div>
+              <p class="eyebrow">SONG LIBRARY</p>
+              <h2>곡 추가 시스템</h2>
+            </div>
+          </div>
+          <p class="muted">저장한 곡/채보를 로컬 라이브러리에서 불러옵니다. 오디오 파일은 브라우저 보안상 다시 선택해야 할 수 있어요.</p>
+          <select id="songLibrary" size="6" aria-label="저장된 곡"></select>
+          <div class="tool-row">
+            <button id="loadSong" type="button">불러오기</button>
+            <button id="deleteSong" type="button" class="secondary">삭제</button>
+          </div>
+
+          <hr />
+
+          <div class="panel-header compact">
+            <div>
+              <p class="eyebrow">LATENCY CHECK</p>
+              <h2>레이턴시 체크</h2>
+            </div>
+          </div>
+          <p class="muted">메트로놈에 맞춰 Tap을 8번 누르면 평균 입력 지연을 계산해 판정에 보정합니다.</p>
+          <div class="latency-box">
+            <strong id="latencyValue">0ms</strong>
+            <span id="latencyStatus">대기 중</span>
+          </div>
+          <div class="tool-row">
+            <button id="startLatency" type="button">체크 시작</button>
+            <button id="latencyTap" type="button" class="secondary">Tap</button>
+          </div>
+        </aside>
       </section>
 
       <section class="feedback">
@@ -95,6 +149,21 @@
         <span id="status">스페이스 또는 Start를 눌러 시작하세요.</span>
       </section>
     </main>
+
+    <dialog id="resultDialog" class="result-dialog">
+      <div class="result-card">
+        <p class="eyebrow">RESULT</p>
+        <h2 id="resultRank">S</h2>
+        <dl>
+          <div><dt>Score</dt><dd id="resultScore">0</dd></div>
+          <div><dt>Max Combo</dt><dd id="resultCombo">0</dd></div>
+          <div><dt>Accuracy</dt><dd id="resultAccuracy">100.00%</dd></div>
+          <div><dt>Notes</dt><dd id="resultNotes">0</dd></div>
+        </dl>
+        <button id="closeResult" type="button">닫기</button>
+      </div>
+    </dialog>
+
     <script src="app.js" type="module"></script>
   </body>
 </html>
