@@ -1,0 +1,13 @@
+{
+  "name": "sidebeat-lanes",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Right-to-left browser rhythm game prototype.",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 5173 --directory public",
+    "test": "node scripts/smoke-test.mjs"
+  },
+  "keywords": ["rhythm-game", "canvas", "browser-game"],
+  "license": "MIT"
+}

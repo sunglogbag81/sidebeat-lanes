@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sidebeat Lanes</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">RIGHT → LEFT RHYTHM GAME</p>
+        <h1>Sidebeat Lanes</h1>
+        <p class="subtitle">노트가 오른쪽에서 왼쪽 판정선으로 달려오는 4레인 리듬게임 프로토타입.</p>
+      </section>
+
+      <section class="hud" aria-label="게임 상태">
+        <div><span>Score</span><strong id="score">0</strong></div>
+        <div><span>Combo</span><strong id="combo">0</strong></div>
+        <div><span>Accuracy</span><strong id="accuracy">100.00%</strong></div>
+        <div><span>Life</span><strong id="life">100</strong></div>
+      </section>
+
+      <section class="game-card">
+        <canvas id="game" width="1100" height="520" aria-label="Sidebeat Lanes game canvas"></canvas>
+        <div class="controls">
+          <button id="startButton">Start / Pause</button>
+          <button id="restartButton">Restart</button>
+          <p><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> 로 판정선에 도착한 노트를 치세요. <kbd>Space</kbd> 시작/일시정지, <kbd>R</kbd> 재시작.</p>
+        </div>
+      </section>
+
+      <section class="feedback">
+        <strong id="judgement">Ready</strong>
+        <span id="status">스페이스 또는 Start를 눌러 시작하세요.</span>
+      </section>
+    </main>
+    <script src="app.js" type="module"></script>
+  </body>
+</html>
