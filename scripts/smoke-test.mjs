@@ -50,7 +50,7 @@ for (const token of ['interface ChartFile', 'interface ChartNote', 'sidebeat-lan
 for (const token of ['parseChart', 'buildChartFile', 'normalizeNotes']) {
   if (!chart.includes(token)) throw new Error(`chart.ts missing ${token}`);
 }
-for (const token of ['class GameApp', 'judge', 'release', 'parseChart']) {
+for (const token of ['class GameApp', 'judge', 'release', 'parseChart', 'setPlayFocus']) {
   if (!game.includes(token)) throw new Error(`GameApp.ts missing ${token}`);
 }
 for (const token of ['generatedChartUpload', 'saveSongPackage', 'Timeline', 'LibraryPanel', 'ChartList', 'generateFromServer']) {
