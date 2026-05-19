@@ -5,6 +5,8 @@ const requiredFiles = [
   'admin.html',
   'src/main.ts',
   'src/admin.ts',
+  'src/admin/Timeline.ts',
+  'src/admin/LibraryPanel.ts',
   'src/core/types.ts',
   'src/core/chart.ts',
   'src/game/GameApp.ts',
@@ -24,6 +26,8 @@ const types = await readFile(new URL('../src/core/types.ts', import.meta.url), '
 const chart = await readFile(new URL('../src/core/chart.ts', import.meta.url), 'utf8');
 const game = await readFile(new URL('../src/game/GameApp.ts', import.meta.url), 'utf8');
 const admin = await readFile(new URL('../src/admin.ts', import.meta.url), 'utf8');
+const timeline = await readFile(new URL('../src/admin/Timeline.ts', import.meta.url), 'utf8');
+const storage = await readFile(new URL('../src/library/storage.ts', import.meta.url), 'utf8');
 const py = await readFile(new URL('../tools/chartgen/generate_chart.py', import.meta.url), 'utf8');
 
 for (const token of ['chartUpload', 'audioUpload', '/src/main.ts']) {
@@ -44,8 +48,14 @@ for (const token of ['parseChart', 'buildChartFile', 'normalizeNotes']) {
 for (const token of ['class GameApp', 'judge', 'release', 'parseChart']) {
   if (!game.includes(token)) throw new Error(`GameApp.ts missing ${token}`);
 }
-for (const token of ['drawTimeline', 'generatedChartUpload', 'saveChart']) {
+for (const token of ['generatedChartUpload', 'saveSongPackage', 'Timeline', 'LibraryPanel']) {
   if (!admin.includes(token)) throw new Error(`admin.ts missing ${token}`);
+}
+for (const token of ['class Timeline', 'drawBeatGrid', 'pointerdown']) {
+  if (!timeline.includes(token)) throw new Error(`Timeline.ts missing ${token}`);
+}
+for (const token of ['indexedDB.open', 'audioBlob', 'migrateLegacyLibrary']) {
+  if (!storage.includes(token)) throw new Error(`storage.ts missing ${token}`);
 }
 for (const token of ['librosa', 'beat_track', 'onset_detect', 'sidebeat-lanes-chart-v3']) {
   if (!py.includes(token)) throw new Error(`generate_chart.py missing ${token}`);

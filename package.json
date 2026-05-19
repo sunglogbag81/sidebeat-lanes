@@ -8,13 +8,19 @@
     "start": "vite --host 0.0.0.0 --port 5173",
     "dev": "vite --host 0.0.0.0 --port 5173",
     "build": "tsc && vite build",
-    "test": "node scripts/smoke-test.mjs && npm run build"
+    "test": "vitest run && node scripts/smoke-test.mjs && npm run build"
   },
-  "keywords": ["rhythm-game", "canvas", "browser-game", "typescript"],
+  "keywords": [
+    "rhythm-game",
+    "canvas",
+    "browser-game",
+    "typescript"
+  ],
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.15.21",
     "typescript": "^5.8.3",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vitest": "^4.1.6"
   }
 }
