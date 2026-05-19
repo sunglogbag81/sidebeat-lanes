@@ -26,8 +26,11 @@ const game = await readFile(new URL('../src/game/GameApp.ts', import.meta.url), 
 const admin = await readFile(new URL('../src/admin.ts', import.meta.url), 'utf8');
 const py = await readFile(new URL('../tools/chartgen/generate_chart.py', import.meta.url), 'utf8');
 
-for (const token of ['chartUpload', 'audioUpload', 'Admin Studio', '/src/main.ts']) {
+for (const token of ['chartUpload', 'audioUpload', '/src/main.ts']) {
   if (!mainHtml.includes(token)) throw new Error(`index.html missing ${token}`);
+}
+for (const token of ['Admin Studio', '/admin.html']) {
+  if (mainHtml.includes(token)) throw new Error(`index.html should not expose ${token}`);
 }
 for (const token of ['AUTO CHARTGEN', 'generatedChartUpload', 'timeline', '/src/admin.ts']) {
   if (!adminHtml.includes(token)) throw new Error(`admin.html missing ${token}`);
