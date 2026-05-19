@@ -13,6 +13,22 @@ export interface PlayableNote extends Required<ChartNote> {
   completed: boolean;
 }
 
+export interface ChartComment {
+  time: number;
+  text: string;
+  createdAt: number;
+}
+
+export interface DifficultyMetrics {
+  score: number;
+  label: DifficultyId;
+  density: number;
+  peakDensity: number;
+  longNoteRatio: number;
+  chordRatio: number;
+  jackRatio: number;
+}
+
 export interface ChartFile {
   title: string;
   format: 'sidebeat-lanes-chart-v2' | 'sidebeat-lanes-chart-v3';
@@ -22,6 +38,8 @@ export interface ChartFile {
   latencyMs?: number;
   audioFileName?: string | null;
   generator?: string;
+  comments?: ChartComment[];
+  analysis?: DifficultyMetrics;
   notes: ChartNote[];
 }
 

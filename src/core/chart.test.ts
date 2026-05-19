@@ -15,7 +15,7 @@ describe('chart core', () => {
     ]);
   });
 
-  it('parses v3 chart metadata and normalizes notes', () => {
+  it('parses v3 chart metadata and normalizes notes/comments', () => {
     const chart = parseChart(JSON.stringify({
       format: 'sidebeat-lanes-chart-v3',
       title: 'Song',
@@ -23,6 +23,7 @@ describe('chart core', () => {
       bpm: 150,
       offset: 32,
       audioFileName: 'song.mp3',
+      comments: [{ time: 300, text: 'check this', createdAt: 1 }],
       notes: [{ lane: 3, time: 400 }, { lane: 0, time: 100 }],
     }));
 
@@ -34,6 +35,8 @@ describe('chart core', () => {
       offset: 32,
       audioFileName: 'song.mp3',
     });
+    expect(chart.comments).toEqual([{ time: 300, text: 'check this', createdAt: 1 }]);
+    expect(chart.analysis?.score).toBeGreaterThan(0);
     expect(chart.notes).toEqual([{ lane: 0, time: 100, duration: 0 }, { lane: 3, time: 400, duration: 0 }]);
   });
 

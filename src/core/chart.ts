@@ -1,4 +1,5 @@
-import type { ChartFile, ChartNote, DifficultyConfig, DifficultyId, PlayableNote } from './types';
+import { analyzeDifficulty } from './difficulty';
+import type { ChartComment, ChartFile, ChartNote, DifficultyConfig, DifficultyId, PlayableNote } from './types';
 
 export const LANES = ['D', 'F', 'J', 'K'] as const;
 export const LANE_KEYS = new Map(LANES.map((key, lane) => [key.toLowerCase(), lane]));
@@ -32,33 +33,46 @@ export function normalizeNotes(notes: ChartNote[]): PlayableNote[] {
     .sort((a, b) => a.time - b.time || a.lane - b.lane);
 }
 
+function normalizeComments(comments: unknown): ChartComment[] {
+  if (!Array.isArray(comments)) return [];
+  return comments
+    .map((comment) => comment as Partial<ChartComment>)
+    .filter((comment) => Number.isFinite(Number(comment.time)) && String(comment.text || '').trim())
+    .map((comment) => ({ time: Math.max(0, Math.round(Number(comment.time))), text: String(comment.text).trim(), createdAt: Number(comment.createdAt) || Date.now() }))
+    .sort((a, b) => a.time - b.time || a.createdAt - b.createdAt);
+}
+
 export function parseChart(text: string): ChartFile {
   const payload = JSON.parse(text) as Partial<ChartFile> | ChartNote[];
   const source = Array.isArray(payload) ? { notes: payload } : payload;
   if (!Array.isArray(source.notes)) throw new Error('notes 배열을 찾을 수 없습니다.');
-  return {
+  const chart = {
     title: source.title || 'Untitled Song',
-    format: source.format === 'sidebeat-lanes-chart-v3' ? 'sidebeat-lanes-chart-v3' : 'sidebeat-lanes-chart-v2',
+    format: source.format === 'sidebeat-lanes-chart-v3' ? 'sidebeat-lanes-chart-v3' as const : 'sidebeat-lanes-chart-v2' as const,
     difficulty: source.difficulty && source.difficulty in difficulties ? source.difficulty : 'normal',
     bpm: Number(source.bpm) || difficulties.normal.bpm,
     offset: Number(source.offset) || 0,
     latencyMs: Number(source.latencyMs) || 0,
     audioFileName: source.audioFileName ?? null,
     generator: source.generator,
+    comments: normalizeComments(source.comments),
     notes: normalizeNotes(source.notes).map(({ lane, time, duration }) => ({ lane, time, duration })),
   };
+  return { ...chart, analysis: analyzeDifficulty(chart) };
 }
 
 export function buildChartFile(input: Partial<ChartFile> & { notes: ChartNote[] }): ChartFile {
-  return {
+  const chart = {
     title: input.title || 'Untitled Song',
-    format: 'sidebeat-lanes-chart-v3',
+    format: 'sidebeat-lanes-chart-v3' as const,
     difficulty: input.difficulty || 'normal',
     bpm: Number(input.bpm) || difficulties.normal.bpm,
     offset: Number(input.offset) || 0,
     latencyMs: Number(input.latencyMs) || 0,
     audioFileName: input.audioFileName ?? null,
     generator: input.generator,
+    comments: normalizeComments(input.comments),
     notes: normalizeNotes(input.notes).map(({ lane, time, duration }) => ({ lane, time, duration })),
   };
+  return { ...chart, analysis: analyzeDifficulty(chart) };
 }

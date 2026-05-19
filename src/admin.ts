@@ -1,10 +1,12 @@
 import './styles/app.css';
 import { all, must } from './ui/dom';
 import { buildChartFile, LANES, normalizeNotes, parseChart } from './core/chart';
-import type { ChartFile, ChartNote } from './core/types';
+import { analyzeDifficulty } from './core/difficulty';
+import type { ChartComment, ChartFile, ChartNote } from './core/types';
 import { deleteSong, getLibrary, getSong, saveSongPackage } from './library/storage';
 import { exportSongPackage, importSongPackage, packageFileName } from './library/package';
 import { ChartList } from './admin/ChartList';
+import { CommentList } from './admin/CommentList';
 import { LibraryPanel } from './admin/LibraryPanel';
 import { Timeline } from './admin/Timeline';
 
@@ -20,8 +22,11 @@ const importChart = must<HTMLTextAreaElement>('#importChart');
 const statusEl = must<HTMLElement>('#status');
 const editorCount = must<HTMLElement>('#editorCount');
 const editorTime = must<HTMLElement>('#editorTime');
+const difficultyScore = must<HTMLElement>('#difficultyScore');
+const commentInput = must<HTMLInputElement>('#commentInput');
 
 let notes: ChartNote[] = [];
+let comments: ChartComment[] = [];
 let selected = -1;
 let audioName: string | null = null;
 let audioBlob: Blob | undefined;
@@ -46,15 +51,19 @@ function setAudioSource(blob: Blob | undefined, fileName?: string | null): void 
 }
 
 function build(): ChartFile {
-  return buildChartFile({ title: title(), difficulty: 'normal', bpm: bpm(), offset: offset(), audioFileName: audioName, notes });
+  return buildChartFile({ title: title(), difficulty: analyzeDifficulty({ notes, bpm: bpm() }).label, bpm: bpm(), offset: offset(), audioFileName: audioName, comments, notes });
 }
 
 function sync(): void {
   notes = normalizeNotes(notes).map(({ lane, time, duration }) => ({ lane, time, duration }));
+  comments = comments.sort((a, b) => a.time - b.time || a.createdAt - b.createdAt);
+  const analysis = analyzeDifficulty({ notes, bpm: bpm() });
   exportChart.value = JSON.stringify(build(), null, 2);
   editorCount.textContent = `${notes.length} notes`;
   editorTime.textContent = `${(currentTime() / 1000).toFixed(3)}s`;
+  difficultyScore.textContent = `${analysis.score.toFixed(1)} ${analysis.label.toUpperCase()} · peak ${analysis.peakDensity}/s`;
   chartList.render();
+  commentList.render();
   timeline.draw();
 }
 
@@ -67,6 +76,7 @@ function addNote(lane: number, time = currentTime(), duration = 0): void {
 
 function applyChart(chart: ChartFile, storedAudio?: Blob): void {
   notes = chart.notes;
+  comments = chart.comments ?? [];
   songTitle.value = chart.title;
   bpmInput.value = String(chart.bpm);
   offsetInput.value = String(chart.offset);
@@ -147,6 +157,7 @@ const timeline = new Timeline({
   canvas: must<HTMLCanvasElement>('#timeline'),
   audio,
   getNotes: () => notes,
+  getComments: () => comments,
   getSelected: () => selected,
   setSelected: (index) => { selected = index; },
   replaceNote: (index, note) => { notes[index] = note; },
@@ -166,6 +177,14 @@ const chartList = new ChartList({
   onChange: sync,
 });
 
+const commentList = new CommentList({
+  list: must<HTMLOListElement>('#commentList'),
+  getComments: () => comments,
+  removeComment: (index) => { comments.splice(index, 1); },
+  onJump: (time) => { audio.currentTime = time / 1000; sync(); },
+  onChange: sync,
+});
+
 const libraryPanel = new LibraryPanel({
   select: must<HTMLSelectElement>('#songLibrary'),
   loadButton: must<HTMLButtonElement>('#loadSong'),
@@ -177,6 +196,7 @@ const libraryPanel = new LibraryPanel({
 function bind(): void {
   timeline.bind();
   chartList.bind();
+  commentList.bind();
   libraryPanel.bind();
   audioUpload.addEventListener('change', () => {
     const file = audioUpload.files?.[0];
@@ -209,7 +229,8 @@ function bind(): void {
   must<HTMLButtonElement>('#saveSong').addEventListener('click', () => { void saveCurrent(); });
   must<HTMLButtonElement>('#exportPackage').addEventListener('click', () => { void exportPackage(); });
   must<HTMLButtonElement>('#generateFromServer').addEventListener('click', () => { void generateFromServer().catch((error) => status(`자동 생성 실패: ${(error as Error).message}`)); });
-  must<HTMLButtonElement>('#clearChart').addEventListener('click', () => { notes = []; selected = -1; sync(); });
+  must<HTMLButtonElement>('#addComment').addEventListener('click', () => { const text = commentInput.value.trim(); if (!text) return; comments.push({ time: Math.round(currentTime()), text, createdAt: Date.now() }); commentInput.value = ''; sync(); });
+  must<HTMLButtonElement>('#clearChart').addEventListener('click', () => { notes = []; comments = []; selected = -1; sync(); });
   [bpmInput, offsetInput, snapSelect].forEach((el) => el.addEventListener('change', sync));
 }
 

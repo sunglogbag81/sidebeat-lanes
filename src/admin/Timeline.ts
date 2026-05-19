@@ -1,10 +1,11 @@
 import { LANES } from '../core/chart';
-import type { ChartNote } from '../core/types';
+import type { ChartComment, ChartNote } from '../core/types';
 
 interface TimelineOptions {
   canvas: HTMLCanvasElement;
   audio: HTMLAudioElement;
   getNotes: () => ChartNote[];
+  getComments?: () => ChartComment[];
   getSelected: () => number;
   setSelected: (index: number) => void;
   replaceNote: (index: number, note: ChartNote) => void;
@@ -57,6 +58,18 @@ export class Timeline {
     }
 
     this.drawBeatGrid(start, dur);
+    this.options.getComments?.().forEach((comment) => {
+      const x = (comment.time - start) / dur * w;
+      if (x < -10 || x > w + 10) return;
+      this.ctx.fillStyle = '#ffd166';
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, 4);
+      this.ctx.lineTo(x - 7, 18);
+      this.ctx.lineTo(x + 7, 18);
+      this.ctx.closePath();
+      this.ctx.fill();
+    });
+
     notes.forEach((note, index) => {
       const x = (note.time - start) / dur * w;
       const endX = (note.time + (note.duration || 0) - start) / dur * w;
