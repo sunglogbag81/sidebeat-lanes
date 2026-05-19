@@ -20,6 +20,7 @@
         <canvas id="game" width="1100" height="560" aria-label="Sidebeat Lanes game canvas"></canvas>
         <div class="controls">
           <label class="pill-field"><span>난이도</span><select id="difficultySelect"><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option><option value="expert">Expert</option></select></label>
+          <label class="pill-field"><span>라이브러리</span><select id="songLibrary"><option value="">Demo Track</option></select></label>
           <label class="pill-field file-field"><span>곡</span><input id="audioUpload" type="file" accept="audio/*" /></label>
           <label class="pill-field file-field"><span>채보</span><input id="chartUpload" type="file" accept="application/json,.json" /></label>
           <audio id="audioPlayer" controls preload="metadata"></audio>

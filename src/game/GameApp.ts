@@ -1,6 +1,7 @@
 import { difficulties, LANE_KEYS, LANES, makeDemoChart, normalizeNotes, parseChart } from '../core/chart';
 import { judgementWindows, rankForAccuracy } from '../core/judgement';
 import type { ChartFile, DifficultyId, PlayableNote } from '../core/types';
+import { getLibrary, getSong } from '../library/storage';
 import { must } from '../ui/dom';
 
 interface GameState { notes: PlayableNote[]; running: boolean; startedAt: number; pausedAt: number; pauseAccumulated: number; score: number; combo: number; maxCombo: number; judged: number; totalHitValue: number; life: number; laneFlash: number[]; nextTick: number; finished: boolean; }
@@ -12,6 +13,7 @@ export class GameApp {
   private difficultySelect = must<HTMLSelectElement>('#difficultySelect');
   private chartUpload = must<HTMLInputElement>('#chartUpload');
   private audioUpload = must<HTMLInputElement>('#audioUpload');
+  private songLibrary = must<HTMLSelectElement>('#songLibrary');
   private currentDifficulty: DifficultyId = 'normal';
   private chart: ChartFile | null = null;
   private state!: GameState;
@@ -22,6 +24,7 @@ export class GameApp {
   private held = new Set<number>();
   private effects: Array<{ lane: number; label: string; color: string; age: number }> = [];
   private latencyMs = Number(localStorage.getItem('sidebeat-latency-ms') || 0);
+  private audioObjectUrl: string | null = null;
 
   start(): void {
     must<HTMLButtonElement>('#startButton').addEventListener('click', () => this.toggleStart());
@@ -30,8 +33,10 @@ export class GameApp {
     this.difficultySelect.addEventListener('change', () => { this.currentDifficulty = this.difficultySelect.value as DifficultyId; this.chart = null; this.reset(); });
     this.chartUpload.addEventListener('change', () => this.loadChartFile());
     this.audioUpload.addEventListener('change', () => this.loadAudioFile());
+    this.songLibrary.addEventListener('change', () => this.loadLibrarySong());
     window.addEventListener('keydown', (event) => this.onKeyDown(event));
     window.addEventListener('keyup', (event) => this.onKeyUp(event));
+    void this.renderLibrary();
     this.reset();
   }
 
@@ -87,6 +92,9 @@ export class GameApp {
   private updateHud(): void { must<HTMLElement>('#songLabel').textContent = this.chart?.title || 'Demo Track'; must<HTMLElement>('#difficultyLabel').textContent = this.chart ? 'Custom' : difficulties[this.currentDifficulty].label; must<HTMLElement>('#score').textContent = Math.round(this.state.score).toLocaleString('ko-KR'); must<HTMLElement>('#combo').textContent = String(this.state.combo); must<HTMLElement>('#accuracy').textContent = `${this.accuracy().toFixed(2)}%`; must<HTMLElement>('#life').textContent = String(Math.round(this.state.life)); }
   private showJudgement(label: string, detail: string): void { must<HTMLElement>('#judgement').textContent = label; this.setStatus(detail); }
   private setStatus(text: string): void { must<HTMLElement>('#status').textContent = text; }
+  private setAudioBlob(blob?: Blob): void { if (this.audioObjectUrl) URL.revokeObjectURL(this.audioObjectUrl); this.audioObjectUrl = null; if (!blob) { this.audio.removeAttribute('src'); this.audio.load(); return; } this.audioObjectUrl = URL.createObjectURL(blob); this.audio.src = this.audioObjectUrl; }
+  private async renderLibrary(): Promise<void> { try { const songs = await getLibrary(); this.songLibrary.innerHTML = '<option value="">Demo Track</option>'; songs.forEach((song) => { const option = document.createElement('option'); option.value = song.id; option.textContent = `${song.title}${song.audioFileName ? ' · audio' : ''}`; this.songLibrary.append(option); }); } catch (error) { this.setStatus(`라이브러리 로드 실패: ${(error as Error).message}`); } }
+  private async loadLibrarySong(): Promise<void> { const id = this.songLibrary.value; if (!id) { this.chart = null; this.setAudioBlob(); this.reset(); return; } const song = await getSong(id); if (!song) return; this.chart = song.chart; this.currentDifficulty = song.chart.difficulty; this.difficultySelect.value = this.currentDifficulty; this.setAudioBlob(song.audioBlob); this.reset(); }
   private async loadChartFile(): Promise<void> { const file = this.chartUpload.files?.[0]; if (!file) return; this.chart = parseChart(await file.text()); this.currentDifficulty = this.chart.difficulty; this.difficultySelect.value = this.currentDifficulty; this.reset(); }
-  private loadAudioFile(): void { const file = this.audioUpload.files?.[0]; if (!file) return; if (this.audio.src) URL.revokeObjectURL(this.audio.src); this.audio.src = URL.createObjectURL(file); this.setStatus(`${file.name} 로드 완료.`); }
+  private loadAudioFile(): void { const file = this.audioUpload.files?.[0]; if (!file) return; this.setAudioBlob(file); this.setStatus(`${file.name} 로드 완료.`); }
 }

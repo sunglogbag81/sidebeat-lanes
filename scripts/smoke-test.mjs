@@ -7,10 +7,13 @@ const requiredFiles = [
   'src/admin.ts',
   'src/admin/Timeline.ts',
   'src/admin/LibraryPanel.ts',
+  'src/admin/ChartList.ts',
   'src/core/types.ts',
   'src/core/chart.ts',
   'src/game/GameApp.ts',
+  'src/library/package.ts',
   'tools/chartgen/generate_chart.py',
+  'tools/chartgen/server.py',
   'tools/chartgen/requirements.txt',
   'README.md',
 ];
@@ -28,15 +31,17 @@ const game = await readFile(new URL('../src/game/GameApp.ts', import.meta.url), 
 const admin = await readFile(new URL('../src/admin.ts', import.meta.url), 'utf8');
 const timeline = await readFile(new URL('../src/admin/Timeline.ts', import.meta.url), 'utf8');
 const storage = await readFile(new URL('../src/library/storage.ts', import.meta.url), 'utf8');
+const packageTs = await readFile(new URL('../src/library/package.ts', import.meta.url), 'utf8');
 const py = await readFile(new URL('../tools/chartgen/generate_chart.py', import.meta.url), 'utf8');
+const server = await readFile(new URL('../tools/chartgen/server.py', import.meta.url), 'utf8');
 
-for (const token of ['chartUpload', 'audioUpload', '/src/main.ts']) {
+for (const token of ['chartUpload', 'audioUpload', 'songLibrary', '/src/main.ts']) {
   if (!mainHtml.includes(token)) throw new Error(`index.html missing ${token}`);
 }
 for (const token of ['Admin Studio', '/admin.html']) {
   if (mainHtml.includes(token)) throw new Error(`index.html should not expose ${token}`);
 }
-for (const token of ['AUTO CHARTGEN', 'generatedChartUpload', 'timeline', '/src/admin.ts']) {
+for (const token of ['AUTO CHARTGEN', 'generatedChartUpload', 'packageUpload', 'generateFromServer', 'timeline', '/src/admin.ts']) {
   if (!adminHtml.includes(token)) throw new Error(`admin.html missing ${token}`);
 }
 for (const token of ['interface ChartFile', 'interface ChartNote', 'sidebeat-lanes-chart-v3']) {
@@ -48,7 +53,7 @@ for (const token of ['parseChart', 'buildChartFile', 'normalizeNotes']) {
 for (const token of ['class GameApp', 'judge', 'release', 'parseChart']) {
   if (!game.includes(token)) throw new Error(`GameApp.ts missing ${token}`);
 }
-for (const token of ['generatedChartUpload', 'saveSongPackage', 'Timeline', 'LibraryPanel']) {
+for (const token of ['generatedChartUpload', 'saveSongPackage', 'Timeline', 'LibraryPanel', 'ChartList', 'generateFromServer']) {
   if (!admin.includes(token)) throw new Error(`admin.ts missing ${token}`);
 }
 for (const token of ['class Timeline', 'drawBeatGrid', 'pointerdown']) {
@@ -57,8 +62,14 @@ for (const token of ['class Timeline', 'drawBeatGrid', 'pointerdown']) {
 for (const token of ['indexedDB.open', 'audioBlob', 'migrateLegacyLibrary']) {
   if (!storage.includes(token)) throw new Error(`storage.ts missing ${token}`);
 }
+for (const token of ['JSZip', 'exportSongPackage', 'importSongPackage']) {
+  if (!packageTs.includes(token)) throw new Error(`package.ts missing ${token}`);
+}
 for (const token of ['librosa', 'beat_track', 'onset_detect', 'sidebeat-lanes-chart-v3']) {
   if (!py.includes(token)) throw new Error(`generate_chart.py missing ${token}`);
+}
+for (const token of ['FastAPI', '/generate', 'UploadFile']) {
+  if (!server.includes(token)) throw new Error(`server.py missing ${token}`);
 }
 
 console.log('Smoke test passed: TS modules, admin studio, and Python chartgen are present.');

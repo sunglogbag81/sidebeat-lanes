@@ -7,7 +7,7 @@
 - 플레이어 메인 UI: <http://localhost:5173/>
 - 관리자 채보 스튜디오: <http://localhost:5173/admin.html>
 
-메인 UI는 게임 플레이에만 집중합니다. 곡 업로드, 채보 편집, Python 자동 채보 결과 불러오기, 라이브러리 관리는 관리자 스튜디오에서 합니다.
+메인 UI는 게임 플레이에 집중합니다. 관리자 스튜디오에서 곡/채보를 저장하면 플레이 화면의 라이브러리 선택에서 바로 불러와 실행할 수 있습니다.
 
 ## 실행
 
@@ -22,29 +22,38 @@ npm start
 npm test
 ```
 
-`npm test`는 스모크 테스트와 TypeScript/Vite 빌드를 함께 실행합니다.
+`npm test`는 Vitest 단위 테스트, 스모크 테스트, TypeScript/Vite 빌드를 함께 실행합니다.
 
 ## TypeScript 모듈 구조
 
 ```txt
 src/
-  main.ts              # 플레이 전용 진입점
-  admin.ts             # 관리자 스튜디오 진입점
+  main.ts                  # 플레이 전용 진입점
+  admin.ts                 # 관리자 스튜디오 진입점/오케스트레이션
+  admin/
+    Timeline.ts            # 관리자 타임라인 캔버스/드래그 편집
+    LibraryPanel.ts        # 관리자 라이브러리 패널
+    ChartList.ts           # 노트 목록 패널
   core/
-    types.ts           # 채보 포맷/게임 타입
-    chart.ts           # 채보 파싱/정규화/데모 채보
-    judgement.ts       # 판정/랭크
+    types.ts               # 채보 포맷/게임 타입
+    chart.ts               # 채보 파싱/정규화/데모 채보
+    judgement.ts           # 판정/랭크
   game/
-    GameApp.ts         # 플레이 엔진/렌더링/입력
+    GameApp.ts             # 플레이 엔진/렌더링/입력/라이브러리 로드
   library/
-    storage.ts         # 로컬 채보 라이브러리
+    storage.ts             # IndexedDB 곡+채보+오디오 저장소
+    package.ts             # .sidebeat.zip 가져오기/내보내기
   ui/
-    dom.ts             # DOM 헬퍼
+    dom.ts                 # DOM 헬퍼
 ```
 
-## 채보 포맷
+## 채보/곡 저장
 
-현재 표준 포맷은 `sidebeat-lanes-chart-v3`입니다.
+- 채보 표준 포맷은 `sidebeat-lanes-chart-v3`입니다.
+- 관리자 스튜디오의 “곡/채보 저장”은 IndexedDB에 채보와 오디오 Blob을 함께 저장합니다.
+- 예전 localStorage 채보 라이브러리는 첫 로드 시 IndexedDB로 자동 마이그레이션합니다.
+- “패키지 내보내기”는 `chart.json`, `metadata.json`, `audio/*`를 담은 `.sidebeat.zip`을 생성합니다.
+- “패키지 가져오기”는 `.sidebeat.zip`을 읽어 라이브러리에 저장합니다.
 
 ```json
 {
@@ -69,7 +78,7 @@ src/
 
 ## Python 자동 채보/BPM 감지
 
-Python 도구는 브라우저와 분리된 로컬 CLI입니다. BPM 감지와 onset 기반 노트 초안을 생성합니다.
+CLI 초안 생성:
 
 ```bash
 python -m venv .venv-chartgen
@@ -78,7 +87,14 @@ pip install -r tools/chartgen/requirements.txt
 python tools/chartgen/generate_chart.py song.mp3 --difficulty hard --out examples/charts/song-hard.json
 ```
 
-생성된 JSON은 `/admin.html`의 “생성된 JSON 불러오기”에서 불러와 타임라인으로 수정할 수 있습니다.
+선택형 FastAPI 서버:
+
+```bash
+source .venv-chartgen/bin/activate
+uvicorn tools.chartgen.server:app --host 127.0.0.1 --port 8000
+```
+
+서버가 켜져 있으면 `/admin.html`에서 곡 파일을 업로드한 뒤 “업로드한 곡으로 자동 생성”을 눌러 브라우저에서 직접 채보 초안을 받을 수 있습니다.
 
 자동 채보는 완성본이 아니라 초안 생성기입니다. 최종 재미는 관리자 스튜디오에서 다듬는 흐름을 전제로 합니다.
 
@@ -88,16 +104,19 @@ python tools/chartgen/generate_chart.py song.mp3 --difficulty hard --out example
 - 탭 노트 + 롱노트
 - 결과 화면
 - 히트 이펙트
-- TypeScript 모듈화
+- 플레이 화면 라이브러리 곡 로드
 - 관리자용 채보 편집기 분리
 - BPM/오프셋/스냅 기반 타임라인
 - JSON 채보 내보내기/불러오기
-- 로컬 채보 라이브러리
+- IndexedDB 기반 곡+채보+오디오 라이브러리
+- `.sidebeat.zip` 패키지 가져오기/내보내기
 - Python `librosa` 기반 BPM 감지 + 자동 채보 초안 생성
+- 선택형 FastAPI chartgen 서버
+- Vitest 단위 테스트
 
 ## 다음 개발 후보
 
-- IndexedDB 기반 오디오 파일 영구 저장
-- 곡 패키지(zip) 가져오기/내보내기
-- Python chartgen을 서버 API로 감싸 관리자 페이지에서 직접 실행
+- FastAPI 서버 URL 설정 UI
+- 패키지 드래그 앤 드롭
 - WebGL/WASM 렌더러 실험
+- 모바일 터치 입력/접근성 확대

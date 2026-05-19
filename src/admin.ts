@@ -3,6 +3,8 @@ import { all, must } from './ui/dom';
 import { buildChartFile, LANES, normalizeNotes, parseChart } from './core/chart';
 import type { ChartFile, ChartNote } from './core/types';
 import { deleteSong, getLibrary, getSong, saveSongPackage } from './library/storage';
+import { exportSongPackage, importSongPackage, packageFileName } from './library/package';
+import { ChartList } from './admin/ChartList';
 import { LibraryPanel } from './admin/LibraryPanel';
 import { Timeline } from './admin/Timeline';
 
@@ -13,7 +15,6 @@ const bpmInput = must<HTMLInputElement>('#bpmInput');
 const offsetInput = must<HTMLInputElement>('#offsetInput');
 const snapSelect = must<HTMLSelectElement>('#snapSelect');
 const longDurationInput = must<HTMLInputElement>('#longDurationInput');
-const chartList = must<HTMLOListElement>('#chartList');
 const exportChart = must<HTMLTextAreaElement>('#exportChart');
 const importChart = must<HTMLTextAreaElement>('#importChart');
 const statusEl = must<HTMLElement>('#status');
@@ -48,22 +49,12 @@ function build(): ChartFile {
   return buildChartFile({ title: title(), difficulty: 'normal', bpm: bpm(), offset: offset(), audioFileName: audioName, notes });
 }
 
-function renderList(): void {
-  chartList.innerHTML = '';
-  notes.slice(0, 140).forEach((note, index) => {
-    const row = document.createElement('li');
-    row.innerHTML = `<button data-remove="${index}">×</button><span>${(note.time / 1000).toFixed(3)}s</span><strong>${LANES[note.lane]}</strong><em>${note.duration ? `${note.duration}ms` : 'tap'}</em>`;
-    if (index === selected) row.style.outline = '2px solid var(--accent)';
-    chartList.append(row);
-  });
-}
-
 function sync(): void {
   notes = normalizeNotes(notes).map(({ lane, time, duration }) => ({ lane, time, duration }));
   exportChart.value = JSON.stringify(build(), null, 2);
   editorCount.textContent = `${notes.length} notes`;
   editorTime.textContent = `${(currentTime() / 1000).toFixed(3)}s`;
-  renderList();
+  chartList.render();
   timeline.draw();
 }
 
@@ -118,6 +109,40 @@ async function deleteSelected(id: string): Promise<void> {
   if (removed) status(`${removed.title} 삭제 완료.`);
 }
 
+async function exportPackage(): Promise<void> {
+  const song = await saveSongPackage({ chart: build(), audioBlob, audioFileName: audioName });
+  await renderLibrary();
+  const blob = await exportSongPackage(song);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = packageFileName(song.title);
+  a.click();
+  URL.revokeObjectURL(url);
+  status(`${song.title} 패키지 내보내기 완료.`);
+}
+
+async function importPackage(file: File): Promise<void> {
+  const imported = await importSongPackage(file);
+  setAudioSource(imported.audioBlob, imported.audioFileName);
+  applyChart(imported.chart, imported.audioBlob);
+  await saveSongPackage({ chart: imported.chart, audioBlob: imported.audioBlob, audioFileName: imported.audioFileName });
+  await renderLibrary();
+  status(`${imported.chart.title} 패키지 가져오기 완료.`);
+}
+
+async function generateFromServer(): Promise<void> {
+  if (!audioBlob) { status('먼저 곡 파일을 업로드하세요.'); return; }
+  status('자동 채보 생성 요청 중...');
+  const form = new FormData();
+  form.append('audio', audioBlob, audioName || 'song.wav');
+  form.append('difficulty', 'normal');
+  const response = await fetch('http://127.0.0.1:8000/generate', { method: 'POST', body: form });
+  if (!response.ok) throw new Error(await response.text());
+  applyChart(parseChart(JSON.stringify(await response.json())), audioBlob);
+  status('자동 채보 생성 완료. 타임라인에서 다듬어 저장하세요.');
+}
+
 const timeline = new Timeline({
   canvas: must<HTMLCanvasElement>('#timeline'),
   audio,
@@ -133,6 +158,14 @@ const timeline = new Timeline({
   onChange: sync,
 });
 
+const chartList = new ChartList({
+  list: must<HTMLOListElement>('#chartList'),
+  getNotes: () => notes,
+  getSelected: () => selected,
+  removeNote: (index) => { notes.splice(index, 1); },
+  onChange: sync,
+});
+
 const libraryPanel = new LibraryPanel({
   select: must<HTMLSelectElement>('#songLibrary'),
   loadButton: must<HTMLButtonElement>('#loadSong'),
@@ -143,6 +176,7 @@ const libraryPanel = new LibraryPanel({
 
 function bind(): void {
   timeline.bind();
+  chartList.bind();
   libraryPanel.bind();
   audioUpload.addEventListener('change', () => {
     const file = audioUpload.files?.[0];
@@ -157,12 +191,6 @@ function bind(): void {
   audio.addEventListener('play', function tick() { sync(); if (!audio.paused) requestAnimationFrame(tick); });
   all<HTMLButtonElement>('[data-editor-lane]').forEach((button) => button.addEventListener('click', () => addNote(Number(button.dataset.editorLane))));
   must<HTMLButtonElement>('#addLongNote').addEventListener('click', () => addNote(0, currentTime(), longDuration()));
-  chartList.addEventListener('click', (event) => {
-    const button = (event.target as Element).closest<HTMLButtonElement>('[data-remove]');
-    if (!button) return;
-    notes.splice(Number(button.dataset.remove), 1);
-    sync();
-  });
   importChart.addEventListener('change', () => {
     try { applyChart(parseChart(importChart.value)); }
     catch (error) { status(`불러오기 실패: ${(error as Error).message}`); }
@@ -171,8 +199,16 @@ function bind(): void {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (file) applyChart(parseChart(await file.text()));
   });
+  must<HTMLInputElement>('#packageUpload').addEventListener('change', async (event) => {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    try { await importPackage(file); }
+    catch (error) { status(`패키지 가져오기 실패: ${(error as Error).message}`); }
+  });
   must<HTMLButtonElement>('#downloadChart').addEventListener('click', download);
   must<HTMLButtonElement>('#saveSong').addEventListener('click', () => { void saveCurrent(); });
+  must<HTMLButtonElement>('#exportPackage').addEventListener('click', () => { void exportPackage(); });
+  must<HTMLButtonElement>('#generateFromServer').addEventListener('click', () => { void generateFromServer().catch((error) => status(`자동 생성 실패: ${(error as Error).message}`)); });
   must<HTMLButtonElement>('#clearChart').addEventListener('click', () => { notes = []; selected = -1; sync(); });
   [bpmInput, offsetInput, snapSelect].forEach((el) => el.addEventListener('change', sync));
 }
